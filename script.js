@@ -43,11 +43,19 @@
       // Try another image
       const fallback = pickRandom(images, chosen);
       if (fallback && fallback !== chosen) {
-        imgEl.src = fallback;
+        imgEl.src = encodePath(fallback);
         sessionStorage.setItem('lastImagePath', fallback);
       }
     };
-    imgEl.src = chosen;
+    imgEl.src = encodePath(chosen);
+  }
+
+  /**
+   * Encode a relative file path so spaces, parentheses, ampersands, etc.
+   * are properly percent-encoded while keeping the directory separators.
+   */
+  function encodePath(p) {
+    return p.split('/').map(segment => encodeURIComponent(segment)).join('/');
   }
 
   // ── Audio Logic ──
@@ -65,14 +73,14 @@
     const chosen = pickRandom(audioFiles, lastAudioPath);
     lastAudioPath = chosen;
 
-    currentAudio = new Audio(chosen);
+    currentAudio = new Audio(encodePath(chosen));
     currentAudio.onerror = () => {
       console.warn(`Failed to load audio: ${chosen}`);
       // Try another audio file
       const fallback = pickRandom(audioFiles, chosen);
       if (fallback && fallback !== chosen) {
         lastAudioPath = fallback;
-        currentAudio = new Audio(fallback);
+        currentAudio = new Audio(encodePath(fallback));
         currentAudio.play().catch((e) => console.warn('Audio play failed:', e));
       }
     };
