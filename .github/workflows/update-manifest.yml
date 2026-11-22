@@ -19,37 +19,29 @@ jobs:
 
       - name: Generate manifest.json
         run: |
-          echo '{' > manifest.json
+          python3 -c "
+          import os, json
 
-          # Scan images
-          echo '  "images": [' >> manifest.json
-          FIRST=true
-          for file in $(find assets/images -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \) | sort); do
-            if [ "$FIRST" = true ]; then
-              FIRST=false
-            else
-              echo ',' >> manifest.json
-            fi
-            printf '    "%s"' "$file" >> manifest.json
-          done
-          echo '' >> manifest.json
-          echo '  ],' >> manifest.json
+          img_exts = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
+          aud_exts = {'.mp3', '.wav', '.ogg'}
 
-          # Scan audio
-          echo '  "audio": [' >> manifest.json
-          FIRST=true
-          for file in $(find assets/audio -type f \( -iname '*.mp3' -o -iname '*.wav' -o -iname '*.ogg' \) | sort); do
-            if [ "$FIRST" = true ]; then
-              FIRST=false
-            else
-              echo ',' >> manifest.json
-            fi
-            printf '    "%s"' "$file" >> manifest.json
-          done
-          echo '' >> manifest.json
-          echo '  ]' >> manifest.json
+          images = sorted([
+              'assets/images/' + f
+              for f in os.listdir('assets/images')
+              if os.path.splitext(f)[1].lower() in img_exts
+          ])
 
-          echo '}' >> manifest.json
+          audio = sorted([
+              'assets/audio/' + f
+              for f in os.listdir('assets/audio')
+              if os.path.splitext(f)[1].lower() in aud_exts
+          ])
+
+          with open('manifest.json', 'w', encoding='utf-8') as fh:
+              json.dump({'images': images, 'audio': audio}, fh, indent=2, ensure_ascii=False)
+
+          print(f'Manifest: {len(images)} images, {len(audio)} audio')
+          "
 
           echo "Generated manifest.json:"
           cat manifest.json
@@ -65,4 +57,3 @@ jobs:
             git commit -m "chore: auto-update manifest.json"
             git push
           fi
-
