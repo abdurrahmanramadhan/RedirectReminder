@@ -5,6 +5,7 @@ on:
     paths:
       - 'assets/images/**'
       - 'assets/audio/**'
+      - 'assets/videos/**'
   workflow_dispatch:
 
 permissions:
@@ -24,23 +25,27 @@ jobs:
 
           img_exts = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
           aud_exts = {'.mp3', '.wav', '.ogg'}
+          vid_exts = {'.mp4', '.webm', '.mov'}
 
-          images = sorted([
-              'assets/images/' + f
-              for f in os.listdir('assets/images')
-              if os.path.splitext(f)[1].lower() in img_exts
-          ])
+          def scan(folder, exts):
+              if not os.path.isdir(folder):
+                  return []
+              return sorted([
+                  folder + '/' + f
+                  for f in os.listdir(folder)
+                  if os.path.splitext(f)[1].lower() in exts
+              ])
 
-          audio = sorted([
-              'assets/audio/' + f
-              for f in os.listdir('assets/audio')
-              if os.path.splitext(f)[1].lower() in aud_exts
-          ])
+          manifest = {
+              'images': scan('assets/images', img_exts),
+              'audio':  scan('assets/audio', aud_exts),
+              'videos': scan('assets/videos', vid_exts),
+          }
 
           with open('manifest.json', 'w', encoding='utf-8') as fh:
-              json.dump({'images': images, 'audio': audio}, fh, indent=2, ensure_ascii=False)
+              json.dump(manifest, fh, indent=2, ensure_ascii=False)
 
-          print(f'Manifest: {len(images)} images, {len(audio)} audio')
+          print(f'Manifest: {len(manifest[\"images\"])} images, {len(manifest[\"audio\"])} audio, {len(manifest[\"videos\"])} videos')
           "
 
           echo "Generated manifest.json:"

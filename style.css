@@ -23,16 +23,19 @@ html, body {
   height: 100vh;
 }
 
-/* === Image === */
-.image-wrapper {
+/* === Media Wrapper (image + video) === */
+.media-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
 }
 
-#random-image {
-  max-width: 80vw;
-  max-height: 70vh;
+/* === Shared media sizing === */
+#random-image,
+#random-video {
+  max-width: 92vw;
+  max-height: 82vh;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -41,8 +44,15 @@ html, body {
   transition: opacity 0.4s ease;
 }
 
-#random-image.loaded {
+#random-image.loaded,
+#random-video.loaded {
   opacity: 1;
+}
+
+/* Hide inactive media element */
+#random-image.hidden,
+#random-video.hidden {
+  display: none;
 }
 
 /* === Button === */
@@ -76,4 +86,3 @@ html, body {
   outline: 2px solid rgba(255, 255, 255, 0.6);
   outline-offset: 3px;
 }
-
