@@ -29,6 +29,26 @@ html, body {
   justify-content: center;
   align-items: center;
   position: relative;
+  cursor: default;
+}
+
+/* === Play Overlay (click-to-play for video) === */
+.play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.play-overlay:hover svg circle {
+  fill: rgba(0, 0, 0, 0.7);
+}
+
+.play-overlay.hidden {
+  display: none;
 }
 
 /* === Shared media sizing === */

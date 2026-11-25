@@ -11,6 +11,7 @@
   const imgEl = document.getElementById('random-image');
   const vidEl = document.getElementById('random-video');
   const btnEl = document.getElementById('btn-understand');
+  const playOverlay = document.getElementById('play-overlay');
 
   // ── Helpers ──
 
@@ -72,11 +73,12 @@
   }
 
   function showImage(path) {
-    // Hide video, show image
+    // Hide video + play overlay, show image
     vidEl.classList.add('hidden');
     vidEl.classList.remove('loaded');
     vidEl.pause();
     vidEl.removeAttribute('src');
+    playOverlay.classList.add('hidden');
 
     imgEl.classList.remove('hidden');
     imgEl.classList.remove('loaded');
@@ -95,7 +97,7 @@
   }
 
   function showVideo(path) {
-    // Hide image, show video
+    // Hide image, show video + play overlay
     imgEl.classList.add('hidden');
     imgEl.classList.remove('loaded');
     imgEl.removeAttribute('src');
@@ -104,13 +106,12 @@
     vidEl.classList.remove('loaded');
 
     vidEl.src = encodePath(path);
-    vidEl.muted = true;       // Required for autoplay policy
     vidEl.playsInline = true;
-    vidEl.autoplay = true;
-    vidEl.loop = true;        // Loop the video continuously
+    vidEl.loop = true;
 
-    vidEl.oncanplay = () => {
+    vidEl.onloadeddata = () => {
       vidEl.classList.add('loaded');
+      playOverlay.classList.remove('hidden');  // Show play button
     };
     vidEl.onerror = () => {
       console.warn(`Failed to load video: ${path}`);
@@ -121,8 +122,6 @@
         sessionStorage.setItem('lastMediaPath', fallback);
       }
     };
-
-    vidEl.play().catch(e => console.warn('Video autoplay failed:', e));
   }
 
   // ── Audio Logic ──
@@ -162,6 +161,23 @@
 
   btnEl.addEventListener('click', () => {
     playRandomAudio();
+  });
+
+  // Click play overlay or video to play/pause
+  playOverlay.addEventListener('click', () => {
+    vidEl.play().then(() => {
+      playOverlay.classList.add('hidden');
+    }).catch(e => console.warn('Video play failed:', e));
+  });
+
+  vidEl.addEventListener('click', () => {
+    if (vidEl.paused) {
+      vidEl.play();
+      playOverlay.classList.add('hidden');
+    } else {
+      vidEl.pause();
+      playOverlay.classList.remove('hidden');
+    }
   });
 
   // ── Init ──
