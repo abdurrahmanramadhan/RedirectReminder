@@ -9,16 +9,18 @@
 <body>
   <main class="container">
     <div class="media-wrapper">
-      <img id="random-image" class="hidden" src="" alt="Random artwork" />
-      <video id="random-video" class="hidden" playsinline preload="metadata"></video>
-      <div id="play-overlay" class="play-overlay hidden">
-        <svg viewBox="0 0 80 80" width="80" height="80">
-          <circle cx="40" cy="40" r="38" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
-          <polygon points="32,22 32,58 62,40" fill="rgba(255,255,255,0.9)"/>
-        </svg>
+      <div class="media-frame">
+        <img id="random-image" class="hidden" src="" alt="Random artwork" />
+        <video id="random-video" class="hidden" playsinline preload="metadata"></video>
+        <div id="play-overlay" class="play-overlay hidden">
+          <svg viewBox="0 0 80 80" width="80" height="80">
+            <circle cx="40" cy="40" r="38" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+            <polygon points="32,22 32,58 62,40" fill="rgba(255,255,255,0.9)"/>
+          </svg>
+        </div>
       </div>
+      <button id="btn-understand" class="btn-understand" type="button">I Understand</button>
     </div>
-    <button id="btn-understand" class="btn-understand" type="button">I Understand</button>
   </main>
   <script src="script.js"></script>
 </body>

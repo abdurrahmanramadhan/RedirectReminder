@@ -5,7 +5,7 @@
   let manifest = { images: [], audio: [], videos: [] };
   let currentAudio = null;
   let lastAudioPath = null;
-  let currentMediaType = null; // 'image' or 'video'
+  const MAX_MEDIA_RETRIES = 5;
 
   // ── DOM ──
   const imgEl = document.getElementById('random-image');
@@ -39,7 +39,11 @@
       ...videos.map(p => ({ type: 'video', path: p }))
     ];
 
-    if (allMedia.length === 0) return;
+    if (allMedia.length === 0) {
+      btnEl.classList.remove('floating');
+      btnEl.classList.add('loaded');
+      return;
+    }
 
     const lastPath = sessionStorage.getItem('lastMediaPath');
     let chosen;
@@ -51,7 +55,6 @@
       } while (chosen.path === lastPath);
     }
     sessionStorage.setItem('lastMediaPath', chosen.path);
-    currentMediaType = chosen.type;
 
     if (chosen.type === 'image') {
       showImage(chosen.path);
@@ -60,61 +63,95 @@
     }
   }
 
-  function showImage(path) {
+  function showImage(path, retries = 0) {
     // Hide video and play overlay completely
+    vidEl.onerror = null;
+    vidEl.onloadeddata = null;
+    vidEl.onloadedmetadata = null;
     vidEl.classList.add('hidden');
     vidEl.classList.remove('loaded');
     vidEl.pause();
     vidEl.removeAttribute('src');
-    vidEl.load(); // Reset video element fully
+    vidEl.load();
     playOverlay.classList.add('hidden');
+
+    // Float button over bottom of image
+    btnEl.classList.add('floating');
+    btnEl.classList.remove('loaded');
 
     // Show image
     imgEl.classList.remove('hidden');
     imgEl.classList.remove('loaded');
 
-    imgEl.onload = () => imgEl.classList.add('loaded');
+    imgEl.onload = () => {
+      imgEl.classList.add('loaded');
+      btnEl.classList.add('loaded');
+    };
     imgEl.onerror = () => {
       console.warn('Failed to load image:', path);
-      const fallback = pickRandom(manifest.images || [], path);
-      if (fallback && fallback !== path) {
-        imgEl.src = encodePath(fallback);
-        sessionStorage.setItem('lastMediaPath', fallback);
+      const images = manifest.images || [];
+      if (retries < MAX_MEDIA_RETRIES) {
+        const fallback = pickRandom(images, path);
+        if (fallback && fallback !== path) {
+          sessionStorage.setItem('lastMediaPath', fallback);
+          showImage(fallback, retries + 1);
+          return;
+        }
       }
+      btnEl.classList.remove('floating');
+      btnEl.classList.add('loaded');
     };
     imgEl.src = encodePath(path);
   }
 
-  function showVideo(path) {
+  function showVideo(path, retries = 0) {
     // Hide image completely
+    imgEl.onload = null;
+    imgEl.onerror = null;
     imgEl.classList.add('hidden');
     imgEl.classList.remove('loaded');
     imgEl.removeAttribute('src');
+
+    // Keep button below video (not floating)
+    btnEl.classList.remove('floating');
+    btnEl.classList.remove('loaded');
 
     // Show video element (paused — user must click to play)
     vidEl.classList.remove('hidden');
     vidEl.classList.remove('loaded');
     vidEl.loop = true;
-    vidEl.muted = false;     // Video plays WITH sound when user clicks
-    vidEl.autoplay = false;  // NO autoplay
+    vidEl.muted = false;
+    vidEl.autoplay = false;
+    vidEl.removeAttribute('autoplay');
     vidEl.playsInline = true;
-    vidEl.src = encodePath(path);
-    vidEl.load();
-
-    vidEl.onloadeddata = () => {
+    const revealVideo = () => {
       vidEl.classList.add('loaded');
-      // Show play overlay only after video is loaded
-      playOverlay.classList.remove('hidden');
+      if (vidEl.paused) {
+        playOverlay.classList.remove('hidden');
+      }
+      btnEl.classList.add('loaded');
     };
+
+    vidEl.onloadeddata = revealVideo;
+    vidEl.onloadedmetadata = revealVideo;
     vidEl.onerror = () => {
       console.warn('Failed to load video:', path);
       playOverlay.classList.add('hidden');
-      const fallback = pickRandom(manifest.videos || [], path);
-      if (fallback && fallback !== path) {
-        showVideo(fallback);
-        sessionStorage.setItem('lastMediaPath', fallback);
+      const videos = manifest.videos || [];
+      if (retries < MAX_MEDIA_RETRIES) {
+        const fallback = pickRandom(videos, path);
+        if (fallback && fallback !== path) {
+          sessionStorage.setItem('lastMediaPath', fallback);
+          showVideo(fallback, retries + 1);
+          return;
+        }
       }
+      btnEl.classList.add('loaded');
     };
+
+    vidEl.src = encodePath(path);
+    vidEl.load();
+    vidEl.pause();
   }
 
   // ── Audio Logic ──
@@ -182,6 +219,8 @@
       if (!manifest.videos) manifest.videos = [];
     } catch (err) {
       console.warn('Failed to load manifest.json:', err);
+      btnEl.classList.remove('floating');
+      btnEl.classList.add('loaded');
       return;
     }
     loadRandomMedia();
