@@ -24,7 +24,7 @@ jobs:
           import os, json
 
           img_exts = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
-          aud_exts = {'.mp3', '.wav', '.ogg'}
+          aud_exts = {'.mp3', '.wav', '.ogg', '.opus'}
           vid_exts = {'.mp4', '.webm', '.mov'}
 
           def scan(folder, exts):

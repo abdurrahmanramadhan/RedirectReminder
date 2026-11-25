@@ -5,7 +5,7 @@
   let manifest = { images: [], audio: [], videos: [] };
   let currentAudio = null;
   let lastAudioPath = null;
-  let lastMediaPath = null;
+  let currentMediaType = null; // 'image' or 'video'
 
   // ── DOM ──
   const imgEl = document.getElementById('random-image');
@@ -15,13 +15,9 @@
 
   // ── Helpers ──
 
-  /**
-   * Pick a random item from an array, avoiding `excludePath` when possible.
-   */
   function pickRandom(arr, excludePath) {
     if (!arr || arr.length === 0) return null;
     if (arr.length === 1) return arr[0];
-
     let pick;
     do {
       pick = arr[Math.floor(Math.random() * arr.length)];
@@ -29,20 +25,12 @@
     return pick;
   }
 
-  /**
-   * Encode a relative file path so spaces, parentheses, ampersands, etc.
-   * are properly percent-encoded while keeping the directory separators.
-   */
   function encodePath(p) {
     return p.split('/').map(segment => encodeURIComponent(segment)).join('/');
   }
 
-  // ── Media Logic (image or video) ──
+  // ── Media Logic ──
 
-  /**
-   * Build a combined pool of images + videos, pick one randomly,
-   * then show either the <img> or the <video> element.
-   */
   function loadRandomMedia() {
     const images = manifest.images || [];
     const videos = manifest.videos || [];
@@ -53,7 +41,6 @@
 
     if (allMedia.length === 0) return;
 
-    // Pick a random media item, avoid repeating the same one consecutively
     const lastPath = sessionStorage.getItem('lastMediaPath');
     let chosen;
     if (allMedia.length === 1) {
@@ -64,6 +51,7 @@
       } while (chosen.path === lastPath);
     }
     sessionStorage.setItem('lastMediaPath', chosen.path);
+    currentMediaType = chosen.type;
 
     if (chosen.type === 'image') {
       showImage(chosen.path);
@@ -73,21 +61,22 @@
   }
 
   function showImage(path) {
-    // Hide video + play overlay, show image
+    // Hide video and play overlay completely
     vidEl.classList.add('hidden');
     vidEl.classList.remove('loaded');
     vidEl.pause();
     vidEl.removeAttribute('src');
+    vidEl.load(); // Reset video element fully
     playOverlay.classList.add('hidden');
 
+    // Show image
     imgEl.classList.remove('hidden');
     imgEl.classList.remove('loaded');
 
     imgEl.onload = () => imgEl.classList.add('loaded');
     imgEl.onerror = () => {
-      console.warn(`Failed to load image: ${path}`);
-      const images = manifest.images || [];
-      const fallback = pickRandom(images, path);
+      console.warn('Failed to load image:', path);
+      const fallback = pickRandom(manifest.images || [], path);
       if (fallback && fallback !== path) {
         imgEl.src = encodePath(fallback);
         sessionStorage.setItem('lastMediaPath', fallback);
@@ -97,26 +86,30 @@
   }
 
   function showVideo(path) {
-    // Hide image, show video + play overlay
+    // Hide image completely
     imgEl.classList.add('hidden');
     imgEl.classList.remove('loaded');
     imgEl.removeAttribute('src');
 
+    // Show video element (paused — user must click to play)
     vidEl.classList.remove('hidden');
     vidEl.classList.remove('loaded');
-
-    vidEl.src = encodePath(path);
-    vidEl.playsInline = true;
     vidEl.loop = true;
+    vidEl.muted = false;     // Video plays WITH sound when user clicks
+    vidEl.autoplay = false;  // NO autoplay
+    vidEl.playsInline = true;
+    vidEl.src = encodePath(path);
+    vidEl.load();
 
     vidEl.onloadeddata = () => {
       vidEl.classList.add('loaded');
-      playOverlay.classList.remove('hidden');  // Show play button
+      // Show play overlay only after video is loaded
+      playOverlay.classList.remove('hidden');
     };
     vidEl.onerror = () => {
-      console.warn(`Failed to load video: ${path}`);
-      const videos = manifest.videos || [];
-      const fallback = pickRandom(videos, path);
+      console.warn('Failed to load video:', path);
+      playOverlay.classList.add('hidden');
+      const fallback = pickRandom(manifest.videos || [], path);
       if (fallback && fallback !== path) {
         showVideo(fallback);
         sessionStorage.setItem('lastMediaPath', fallback);
@@ -130,7 +123,6 @@
     const audioFiles = manifest.audio || [];
     if (audioFiles.length === 0) return;
 
-    // Stop current audio if playing
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -141,7 +133,7 @@
 
     currentAudio = new Audio(encodePath(chosen));
     currentAudio.onerror = () => {
-      console.warn(`Failed to load audio: ${chosen}`);
+      console.warn('Failed to load audio:', chosen);
       const fallback = pickRandom(audioFiles, chosen);
       if (fallback && fallback !== chosen) {
         lastAudioPath = fallback;
@@ -150,30 +142,30 @@
       }
     };
 
-    // Play Once (default) — audio stops when track ends.
-    // For Continuous Shuffle, uncomment the following:
-    // currentAudio.addEventListener('ended', () => playRandomAudio());
-
     currentAudio.play().catch(e => console.warn('Audio play failed:', e));
   }
 
   // ── Event Listeners ──
 
+  // "I Understand" button → play random audio
   btnEl.addEventListener('click', () => {
     playRandomAudio();
   });
 
-  // Click play overlay or video to play/pause
-  playOverlay.addEventListener('click', () => {
+  // Play overlay click → start video
+  playOverlay.addEventListener('click', (e) => {
+    e.stopPropagation();
     vidEl.play().then(() => {
       playOverlay.classList.add('hidden');
     }).catch(e => console.warn('Video play failed:', e));
   });
 
+  // Click on video → toggle play/pause
   vidEl.addEventListener('click', () => {
     if (vidEl.paused) {
-      vidEl.play();
-      playOverlay.classList.add('hidden');
+      vidEl.play().then(() => {
+        playOverlay.classList.add('hidden');
+      }).catch(e => console.warn('Video play failed:', e));
     } else {
       vidEl.pause();
       playOverlay.classList.remove('hidden');
@@ -185,9 +177,8 @@
   async function init() {
     try {
       const res = await fetch('manifest.json?t=' + Date.now());
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       manifest = await res.json();
-      // Ensure videos array exists for older manifests
       if (!manifest.videos) manifest.videos = [];
     } catch (err) {
       console.warn('Failed to load manifest.json:', err);
